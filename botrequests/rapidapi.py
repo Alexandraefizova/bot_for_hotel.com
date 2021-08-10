@@ -151,10 +151,11 @@ class RapidApi:
                 lower_price.sort(key=lambda x: x[1])
                 return lower_price
 
-# def main():
-#     parser = RapidApi('new york', '20')
-#     print(parser.lower_price())
-#
-#
-# if __name__ == '__main__':
-#     main()
+
+def main():
+    parser = RapidApi('new york', '20')
+    print(parser.lower_price())
+
+
+if __name__ == '__main__':
+    main()

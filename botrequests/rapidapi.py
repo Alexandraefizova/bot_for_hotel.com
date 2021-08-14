@@ -138,23 +138,47 @@ class RapidApi:
         except TypeError:
             logger.debug('TypeError! Please, try again later!')
 
+    def find_all_hotels(self) -> List:
+        """
+        Find all hotels
+        :return: list
+        """
+        sug = self.get_location_search()
+        for i_destination in self.destination_id(sug):
+            properties = self.get_properties_list(i_destination)
+            if properties:
+                all_hotels = self.find_hotels(properties)
+                return all_hotels
+
     def lower_price(self) -> List:
         """
         Command /lowerprice
         :return: list
         """
-        sug = self.get_location_search()
-        for i_destination in self.destination_id(sug):
-            pr = self.get_properties_list(i_destination)
-            if pr:
-                lower_price = self.find_hotels(pr)
-                lower_price.sort(key=lambda x: x[1])
-                return lower_price
+        try:
+            lower_price = self.find_all_hotels()
+            lower_price.sort(key=lambda x: x[1])
+            return lower_price
+        except AttributeError:
+            logger.debug("'NoneType' object has no attribute 'sort'")
+
+    def high_price(self) -> List:
+        """
+        Command /highprice
+        :return: list
+        """
+        try:
+            high_price = self.find_all_hotels()
+            high_price.sort(key=lambda x: x[1], reverse=True)
+            return high_price
+        except AttributeError:
+            logger.debug("'NoneType' object has no attribute 'sort'")
 
 
 def main():
     parser = RapidApi('new york', '20')
     print(parser.lower_price())
+    print(parser.high_price())
 
 
 if __name__ == '__main__':

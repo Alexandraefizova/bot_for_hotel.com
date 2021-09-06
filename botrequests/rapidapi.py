@@ -5,7 +5,7 @@ from typing import List, Generator
 from fuzzywuzzy import fuzz as f
 import requests
 from loguru import logger
-from .settings import RAPID_API
+from botrequests.settings import RAPID_API
 
 
 class RapidApi:
@@ -182,7 +182,7 @@ class RapidApi:
         best_hotel = []
         try:
             best_deal = self.find_all_hotels()
-            best_deal.sort(key=lambda x: (x[1], x[2]))
+            best_deal.sort(key=lambda x: (x[2], x[1]))
             for i_elem in best_deal:
                 if max_price > i_elem[1] > min_price and max_distance > i_elem[2] > min_distance:
                     best_hotel.append(i_elem[0])
@@ -195,7 +195,7 @@ def main():
     parser = RapidApi('new york', '20')
     print(parser.lower_price())
     print(parser.high_price())
-    print(parser.best_deal(100, 200, 2, 5))
+    print(parser.best_deal(0, 200, 0, 5))
 
 
 if __name__ == '__main__':

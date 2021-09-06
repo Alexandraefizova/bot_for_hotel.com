@@ -78,23 +78,11 @@ async def cmd_start(message: types.Message, state: FSMContext) -> None:
     :param message:
     :return:
     """
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    buttons = ['Moscow', 'New York', 'London']
-    keyboard.add(*buttons)
     answer = message.text
     async with state.proxy() as data:
         data['command'] = answer
-    await message.answer("Please enter the city to search for?", reply_markup=keyboard)
+    await message.answer("Please enter the city to search for?")
     await Form.next()
-
-
-@dp.message_handler(lambda message: message.text not in ['Moscow', 'New York', 'London'], state=Form.city)
-async def process_city_invalid(message: types.Message):
-    """
-    In this example gender has to be one of: 'Moscow', 'New York', 'London'.
-    """
-    return await message.reply("Bad city name. Choose city from the keyboard or put /cancel "
-                               "- close this command and /help - choose command")
 
 
 @dp.message_handler(state=Form.city)
@@ -144,26 +132,39 @@ async def process_price(message: types.Message, state: FSMContext) -> None:
                 if data['command'] == '/lowprice':
                     await message.answer('Answers received generating suggestions!')
                     lower_hotels = rapid_api.lower_price()
-                    await message.answer('Data on your request')
-                    for i_res in lower_hotels:
-                        logger.info(f'{i_res[0]} - {i_res[1]}')
-                        await message.answer(i_res[0])
-                    await state.finish()
-                    await on_startup(dp)
+                    if len(lower_hotels) > 0:
+                        await message.answer('Data on your request')
+                        for i_res in lower_hotels:
+                            logger.info(f'{i_res[0]} - {i_res[1]}')
+                            await message.answer(i_res[0])
+                        await state.finish()
+                        await on_startup(dp)
+                    else:
+                        await message.answer('Not found. Please try again! Put /cancel')
+                        await on_startup(dp)
                 elif data['command'] == '/highprice':
                     await message.answer('Answers received generating suggestions!')
                     high_price = rapid_api.high_price()
-                    logger.info(high_price)
-                    await message.answer('Data on your request')
-                    for i_res in high_price:
-                        logger.info(f'{i_res[0]} - {i_res[1]}')
-                        await message.answer(i_res[0])
-                    await state.finish()
-                    await on_startup(dp)
+                    if len(high_price) > 0:
+                        await message.answer('Data on your request')
+                        for i_res in high_price:
+                            logger.info(f'{i_res[0]} - {i_res[1]}')
+                            await message.answer(i_res[0])
+                        await state.finish()
+                        await on_startup(dp)
+                    else:
+                        await message.answer('Not found. Please try again! Put /cancel')
+                        await on_startup(dp)
 
 
 @dp.message_handler(state=Form.price)
 async def process_distance(message: types.Message, state: FSMContext) -> None:
+    """
+    Input distance
+    :param message:
+    :param state:
+    :return:
+    """
     answer = message.text
     async with state.proxy() as data:
         data['price'] = answer
@@ -198,7 +199,7 @@ async def process_result(message: types.Message, state: FSMContext) -> None:
                 for i_res in best_deal:
                     logger.info(f'{i_res}')
                     await message.answer(i_res)
-            if len(best_deal) == 0:
+            else:
                 await message.answer('Not found. Please try again! Put /cancel')
             await state.finish()
             await on_startup(dp)

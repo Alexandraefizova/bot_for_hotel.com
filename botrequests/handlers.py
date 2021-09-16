@@ -9,6 +9,7 @@ from .middleware import rate_limit
 from .rapidapi import RapidApi
 from .settings import ADMIN_ID, WEBHOOK_URL
 from .state import Form
+from botrequests.search_location import destination_id
 
 
 async def send_to_admin(dp):
@@ -94,8 +95,27 @@ async def process_city(message: types.Message, state: FSMContext) -> None:
     :return:
     """
     answer = message.text
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    full_name_city = destination_id(answer)
+    buttons = full_name_city.keys()
+    keyboard.add(*buttons)
     async with state.proxy() as data:
         data['city'] = answer
+    await message.answer("Please, clarify?", reply_markup=keyboard)
+    await Form.next()
+
+
+@dp.message_handler(state=Form.full_city_name)
+async def process_count(message: types.Message, state: FSMContext) -> None:
+    """
+    The number of hotels
+    :param message:
+    :param state:
+    :return:
+    """
+    answer = message.text
+    async with state.proxy() as data:
+        data['full_name'] = answer
     await message.answer("Please enter the number of hotels to search for?")
     await Form.next()
 
@@ -128,7 +148,8 @@ async def process_price(message: types.Message, state: FSMContext) -> None:
                                      ' enter a number up to 25')
             else:
                 result = list(data.values())
-                rapid_api = RapidApi(count=str(result[2]), city=str(result[1]))
+
+                rapid_api = RapidApi(count=str(result[3]), city=str(result[2]))
                 if data['command'] == '/lowprice':
                     await message.answer('Answers received generating suggestions!')
                     lower_hotels = rapid_api.lower_price()
@@ -136,7 +157,7 @@ async def process_price(message: types.Message, state: FSMContext) -> None:
                         await message.answer('Data on your request')
                         for i_res in lower_hotels:
                             logger.info(f'{i_res[0]} - {i_res[1]}')
-                            await message.answer(i_res[0])
+                            await message.answer('Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]))
                         await state.finish()
                         await on_startup(dp)
                     else:
@@ -149,7 +170,7 @@ async def process_price(message: types.Message, state: FSMContext) -> None:
                         await message.answer('Data on your request')
                         for i_res in high_price:
                             logger.info(f'{i_res[0]} - {i_res[1]}')
-                            await message.answer(i_res[0])
+                            await message.answer('Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]))
                         await state.finish()
                         await on_startup(dp)
                     else:
@@ -188,18 +209,17 @@ async def process_result(message: types.Message, state: FSMContext) -> None:
         if data['command'] == '/bestdeal':
             data['distance'] = answer
             result = list(data.values())
-            min_price = result[3].split(' ')[0]
-            max_price = result[3].split(' ')[1]
-            min_distance = result[4].split(' ')[0]
-            max_distance = result[4].split(' ')[1]
-            rapid_api = RapidApi(count=str(result[2]), city=str(result[1]))
+            logger.info(result)
+            min_price = result[4].split(' ')[0]
+            max_price = result[4].split(' ')[1]
+            min_distance = result[5].split(' ')[0]
+            max_distance = result[5].split(' ')[1]
+            rapid_api = RapidApi(count=str(result[3]), city=str(result[2]))
             best_deal = rapid_api.best_deal(int(min_price), int(max_price), float(min_distance), float(max_distance))
             await message.answer('Data on your request')
-            if len(best_deal) > 0:
-                for i_res in best_deal:
-                    logger.info(f'{i_res}')
-                    await message.answer(i_res)
-            else:
-                await message.answer('Not found. Please try again! Put /cancel')
+            for i_res in best_deal:
+                logger.info(f'{i_res}')
+                await message.answer('Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]) + '\nDistance from center:'
+                                     + str(i_res[2]) + '\nAddress:' + str(i_res[4]))
             await state.finish()
             await on_startup(dp)

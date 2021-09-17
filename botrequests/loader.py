@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from loguru import logger
 
-from botrequests.settings import TOKEN
+from .settings import TOKEN
 
 loop = asyncio.get_event_loop()
 

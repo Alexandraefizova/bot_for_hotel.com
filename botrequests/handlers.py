@@ -3,6 +3,7 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ParseMode
 from loguru import logger
+from .history import History
 from .loader import bot, dp
 from .messages import MESSAGES
 from .middleware import rate_limit
@@ -21,7 +22,8 @@ async def send_to_admin(dp):
     await bot.send_message(ADMIN_ID, text='Bot launched click '
                                           '\n/start - see Bot description'
                                           ' \n/help - go directly to commands'
-                                          '\n/cancel - cancel Bot')
+                                          '\n/cancel - cancel Bot'
+                                          '\n/history - show history')
 
 
 async def on_startup(dp):
@@ -68,6 +70,21 @@ async def cancel_handler(message: types.Message, state: FSMContext):
     """
     await state.finish()
     await message.reply('Cancelled.', reply_markup=types.ReplyKeyboardRemove())
+
+
+@dp.message_handler(commands='history')
+async def history_handler(message: types.Message) -> None:
+    """
+    Start command
+    :param message:
+    :return:
+    """
+    save = History()
+    records = save.show_history()
+    logger.info(MESSAGES['history'])
+    await message.reply(MESSAGES['history'])
+    logger.info(records)
+    await message.reply(records)
 
 
 @dp.message_handler(state=Form.command)
@@ -137,6 +154,7 @@ async def process_count_invalid(message: types.Message):
 @dp.message_handler(state=Form.count)
 async def process_price(message: types.Message, state: FSMContext) -> None:
     answer = message.text
+    hotels = []
     async with state.proxy() as data:
         data['count'] = answer
         if data['command'] == '/bestdeal':
@@ -148,7 +166,6 @@ async def process_price(message: types.Message, state: FSMContext) -> None:
                                      ' enter a number up to 25')
             else:
                 result = list(data.values())
-
                 rapid_api = RapidApi(count=str(result[3]), city=str(result[2]))
                 if data['command'] == '/lowprice':
                     await message.answer('Answers received generating suggestions!')
@@ -158,6 +175,9 @@ async def process_price(message: types.Message, state: FSMContext) -> None:
                         for i_res in lower_hotels:
                             logger.info(f'{i_res[0]} - {i_res[1]}')
                             await message.answer('Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]))
+                            hotels.append(i_res[0])
+                        save = History()
+                        save.add_history(result[0], message.date, hotels)
                         await state.finish()
                         await on_startup(dp)
                     else:
@@ -171,6 +191,9 @@ async def process_price(message: types.Message, state: FSMContext) -> None:
                         for i_res in high_price:
                             logger.info(f'{i_res[0]} - {i_res[1]}')
                             await message.answer('Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]))
+                            hotels.append(i_res[0])
+                        save = History()
+                        save.add_history(result[0], message.date, hotels)
                         await state.finish()
                         await on_startup(dp)
                     else:
@@ -195,6 +218,25 @@ async def process_distance(message: types.Message, state: FSMContext) -> None:
             await Form.next()
 
 
+@dp.message_handler(state=Form.distance)
+async def process_photo(message: types.Message, state: FSMContext) -> None:
+    """
+    Input distance
+    :param message:
+    :param state:
+    :return:
+    """
+    answer = message.text
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    buttons = ['yes', 'no']
+    keyboard.add(*buttons)
+    async with state.proxy() as data:
+        data['distance'] = answer
+        if data['command'] == '/bestdeal':
+            await message.answer('Do you want to see photos of hotels?', reply_markup=keyboard)
+            await Form.next()
+
+
 @dp.message_handler(state='*')
 async def process_result(message: types.Message, state: FSMContext) -> None:
     """
@@ -204,22 +246,40 @@ async def process_result(message: types.Message, state: FSMContext) -> None:
     :return:
     """
     answer = message.text
+    hotels = []
     async with state.proxy() as data:
-        data['distance'] = answer
+        data['photo'] = answer
         if data['command'] == '/bestdeal':
-            data['distance'] = answer
             result = list(data.values())
-            logger.info(result)
             min_price = result[4].split(' ')[0]
             max_price = result[4].split(' ')[1]
             min_distance = result[5].split(' ')[0]
             max_distance = result[5].split(' ')[1]
+            photo = result[6]
             rapid_api = RapidApi(count=str(result[3]), city=str(result[2]))
             best_deal = rapid_api.best_deal(int(min_price), int(max_price), float(min_distance), float(max_distance))
-            await message.answer('Data on your request')
-            for i_res in best_deal:
-                logger.info(f'{i_res}')
-                await message.answer('Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]) + '\nDistance from center:'
-                                     + str(i_res[2]) + '\nAddress:' + str(i_res[4]))
-            await state.finish()
-            await on_startup(dp)
+            if photo == 'yes':
+                await message.answer('Data on your request')
+                for i_res in best_deal:
+                    logger.info(f'{i_res}')
+                    await bot.send_photo(chat_id=message.chat.id, photo=i_res[5])
+                    await message.answer(
+                        'Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]) + '\nDistance from center:'
+                        + str(i_res[2]) + '\nAddress:' + str(i_res[4]))
+                    hotels.append([i_res[0]])
+                save = History()
+                save.add_history(result[0], message.date, hotels)
+                await state.finish()
+                await on_startup(dp)
+            else:
+                await message.answer('Data on your request')
+                for i_res in best_deal:
+                    logger.info(f'{i_res}')
+                    await message.answer(
+                        'Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]) + '\nDistance from center:'
+                        + str(i_res[2]) + '\nAddress:' + str(i_res[4]))
+                save = History()
+                save.add_history(result[0], message.date, hotels)
+                await state.finish()
+                await on_startup(dp)
+

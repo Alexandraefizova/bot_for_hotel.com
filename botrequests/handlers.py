@@ -75,7 +75,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 @dp.message_handler(commands='history')
 async def history_handler(message: types.Message) -> None:
     """
-    Start command
+    History command
     :param message:
     :return:
     """

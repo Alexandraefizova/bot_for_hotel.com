@@ -3,7 +3,7 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ParseMode
 from loguru import logger
-from .history import History
+from .history import DB
 from .loader import bot, dp
 from .messages import MESSAGES
 from .middleware import rate_limit
@@ -11,6 +11,8 @@ from .rapidapi import RapidApi
 from .settings import ADMIN_ID, WEBHOOK_URL
 from .state import Form
 from botrequests.search_location import destination_id
+
+db = DB()
 
 
 async def send_to_admin(dp):
@@ -68,6 +70,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
     """
     Allow user to cancel any action
     """
+    logger.info(message.from_user.id)
     await state.finish()
     await message.reply('Cancelled.', reply_markup=types.ReplyKeyboardRemove())
 
@@ -79,12 +82,13 @@ async def history_handler(message: types.Message) -> None:
     :param message:
     :return:
     """
-    save = History()
-    records = save.show_history()
+    record = db.get_inform()
     logger.info(MESSAGES['history'])
     await message.reply(MESSAGES['history'])
-    logger.info(records)
-    await message.reply(records)
+    logger.info(record)
+    for i_val in record:
+        await message.reply('Command: ' + str(i_val['command']) +
+                            '\nDate: ' + i_val['date'].strftime('%m/%d/%Y, %H:%M:%S') + '\nHotel: ' + str(i_val['hotel']))
 
 
 @dp.message_handler(state=Form.command)
@@ -176,8 +180,9 @@ async def process_price(message: types.Message, state: FSMContext) -> None:
                             logger.info(f'{i_res[0]} - {i_res[1]}')
                             await message.answer('Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]))
                             hotels.append(i_res[0])
-                        save = History()
-                        save.add_history(result[0], message.date, hotels)
+
+                        logger.info(result[0], message.date, " ".join(x for x in hotels))
+                        db.save_inform(result[0], message.date, hotels)
                         await state.finish()
                         await on_startup(dp)
                     else:
@@ -192,8 +197,7 @@ async def process_price(message: types.Message, state: FSMContext) -> None:
                             logger.info(f'{i_res[0]} - {i_res[1]}')
                             await message.answer('Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]))
                             hotels.append(i_res[0])
-                        save = History()
-                        save.add_history(result[0], message.date, hotels)
+                        db.save_inform(result[0], message.date, hotels)
                         await state.finish()
                         await on_startup(dp)
                     else:
@@ -267,8 +271,7 @@ async def process_result(message: types.Message, state: FSMContext) -> None:
                         'Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]) + '\nDistance from center:'
                         + str(i_res[2]) + '\nAddress:' + str(i_res[4]))
                     hotels.append([i_res[0]])
-                save = History()
-                save.add_history(result[0], message.date, hotels)
+                db.save_inform(result[0], message.date, hotels)
                 await state.finish()
                 await on_startup(dp)
             else:
@@ -278,8 +281,6 @@ async def process_result(message: types.Message, state: FSMContext) -> None:
                     await message.answer(
                         'Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]) + '\nDistance from center:'
                         + str(i_res[2]) + '\nAddress:' + str(i_res[4]))
-                save = History()
-                save.add_history(result[0], message.date, hotels)
+                db.save_inform(result[0], message.date, hotels)
                 await state.finish()
                 await on_startup(dp)
-

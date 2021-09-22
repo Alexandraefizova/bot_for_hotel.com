@@ -1,29 +1,28 @@
 from datetime import datetime
+import dataset
 
 
-class History:
-    """
-    Save history search
-    """
-
+class DB:
     def __init__(self) -> None:
-        self.filename = 'history.txt'
+        self.db = None
+        try:
+            self.db = dataset.connect('sqlite:///history.sqlite3')
+        except Exception:
+            raise RuntimeError("db not found")
 
-    def add_history(self, command: str, date: datetime, hotels: list) -> None:
-        """
-        :param user_id:
-        :param command:
-        :param date:
-        :param hotels:
-        :return:
-        """
-        with open(self.filename, 'a') as file:
-            file.write('{} {} {}\n'.format(command, date, hotels))
+    def save_inform(self, command: str, date: datetime, hotels: list) -> None:
+        table = self.db['history']
+        for i_row in hotels:
+            data = {
+                'command': command,
+                'date': date,
+                'hotel': i_row,
+            }
+            table.insert(data)
 
-    def show_history(self) -> str:
-        """
-        :return: str
-        """
-        with open(self.filename, 'r') as file:
-            data = file.read()
-            return data
+    def get_inform(self):
+        rows = []
+        for row in self.db['history']:
+            rows.append(row)
+        return rows
+

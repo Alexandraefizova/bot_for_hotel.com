@@ -157,6 +157,11 @@ async def process_count_invalid(message: types.Message):
 
 @dp.message_handler(state=Form.count)
 async def process_price(message: types.Message, state: FSMContext) -> None:
+    """
+    :param message:
+    :param state:
+    :return:
+    """
     answer = message.text
     hotels = []
     async with state.proxy() as data:
@@ -180,8 +185,6 @@ async def process_price(message: types.Message, state: FSMContext) -> None:
                             logger.info(f'{i_res[0]} - {i_res[1]}')
                             await message.answer('Hotel: ' + str(i_res[0]) + '\nPrice:' + str(i_res[1]))
                             hotels.append(i_res[0])
-
-                        logger.info(result[0], message.date, " ".join(x for x in hotels))
                         db.save_inform(result[0], message.date, hotels)
                         await state.finish()
                         await on_startup(dp)

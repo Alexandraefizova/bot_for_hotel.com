@@ -85,7 +85,8 @@ class RapidApi:
                                if match(r'[0-9,.]', sym)).replace(',', '.')
             label = i_hotel.get('landmarks')[0].get('label')
             address = i_hotel.get('address').get('streetAddress')
-            self.hotels.append((name, price, float(distance), label, address))
+            photo = i_hotel.get('optimizedThumbUrls').get('srpDesktop')
+            self.hotels.append((name, price, float(distance), label, address, photo))
         return self.hotels
 
     def lower_price(self) -> List:
@@ -133,7 +134,7 @@ class RapidApi:
                         if i_elem[3] == 'City center':
                             best_deal.sort(key=lambda x: (x[2], x[1]))
                             if max_price > i_elem[1] > min_price and max_distance > i_elem[2] > min_distance:
-                                best_hotel.append((i_elem[0], i_elem[1], i_elem[2], i_elem[3], i_elem[4]))
+                                best_hotel.append((i_elem[0], i_elem[1], i_elem[2], i_elem[3], i_elem[4], i_elem[5]))
                         else:
                             logger.info("No information found!")
                     return best_hotel

@@ -11,3 +11,4 @@ class Form(StatesGroup):
     count = State()  # Will be represented in storage as 'Form:count_hotels'
     price = State()  # Will be represented in storage as 'Form:price'
     distance = State()  # Will be represented in storage as 'Form:distance'
+    photo = State()  # Will be represented in storage as 'Form:photo'
